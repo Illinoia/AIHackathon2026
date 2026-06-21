@@ -141,6 +141,15 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
 .glyph svg{width:24px!important;height:24px!important}.drop .cloud svg{width:40px!important;height:40px!important}.chat-head .av svg{width:24px;height:24px}.list-row .ic svg{width:20px;height:20px}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(2,1fr)}.grid2,.grid2b,.rev-grid{grid-template-columns:1fr}}
 </style>
+<style>
+#chatlog{display:flex;flex-direction:column;gap:12px;flex:1;min-height:240px;overflow:auto;background:#fafbfe;border-radius:14px;padding:14px}
+.msg.me{background:linear-gradient(90deg,#312e81,#6366f1);color:#fff;align-self:flex-end}
+.msg.typing{opacity:.65;font-style:italic}
+.chat-input{display:flex;gap:8px;padding-top:12px}
+.chat-input input{flex:1;border:1px solid #dfe2ef;border-radius:12px;padding:11px 14px;font:inherit;font-size:14px;outline:0}
+.filechip{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:underline}
+.btn-soft.qa{font-size:12.5px;padding:7px 11px}
+</style>
 </head>
 <body>
 <div class="app">
@@ -204,10 +213,8 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
         </div>
         <div class="grid2b">
           <div class="card panel">
-            <div class="row" style="align-items:center"><h3>Recent Activity</h3><a class="link">View All</a></div>
-            <div class="list-row"><div class="ic">IC_doc</div><div><b>Resume Tailoring Completed</b><br><small>Senior Product Designer @ Meta</small></div><div class="meta"><span class="tag green">Success</span><br><small>2 mins ago</small></div></div>
-            <div class="list-row"><div class="ic">IC_rocket</div><div><b>Application Submitted</b><br><small>Lead Frontend Engineer @ Vercel</small></div><div class="meta"><span class="tag" style="background:#fef3c7;color:#92400e">Pending</span><br><small>1 hour ago</small></div></div>
-            <div class="list-row"><div class="ic" style="background:#f0f2f8;color:#6b7280">IC_search</div><div><b>New Job Match Identified</b><br><small>Design Technologist @ Apple</small></div><div class="meta"><span class="tag indigo">New</span><br><small>3 hours ago</small></div></div>
+            <div class="row" style="align-items:center"><h3>Generated Files</h3><a class="link">View All</a></div>
+            <div id="filesList" style="margin-top:10px"><small style="color:var(--muted)">Loading…</small></div>
           </div>
           <div class="mini">
             <div class="card panel">
@@ -242,11 +249,16 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink
           </div>
           <div class="card chatcard">
             <div class="chat-head"><div class="av">IC_bot</div><div><b>Grill Session</b><br><span style="color:var(--green);font-weight:700;font-size:12px;letter-spacing:.08em">LIVE ANALYSIS</span></div><div style="margin-left:auto;color:var(--muted)">⋮</div></div>
-            <div class="chat-body">
-              <div class="msg ai">I've analyzed your resume and the "Senior Design Project" stood out. You mentioned working on a distributed systems architecture. <span class="accent">Tell me more about your specific role in that project.</span> What was the biggest technical challenge you solved?</div>
-              <div class="msg me">I was the lead backend engineer. I focused on the consistency protocol using Raft. The biggest challenge was handling network partitions without losing data.</div>
-              <div class="msg ai hl">Fascinating. Network partitioning is tricky. How did you validate your Raft implementation? Did you use any specific testing frameworks or simulation tools?<br><span class="chip">Jepsen testing</span></div>
+            <div class="chat-body" id="chatlog"></div>
+            <div class="quickbar" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 0 0">
+              <button class="btn btn-soft qa" data-msg="Let's start a grill session so you can learn more about me.">Start grill</button>
+              <button class="btn btn-soft qa" data-need="material" data-msg="I want to add more information to my profile.">Add info</button>
+              <button class="btn btn-soft qa" data-need="material" data-marks-list="1" data-msg="Please generate my ranked list of suitable jobs.">Generate job list</button>
+              <button class="btn btn-soft qa" data-need="material" data-msg="Please generate a general resume and cover letter for me, without tailoring to a specific job.">Resume + cover letter</button>
+              <button class="btn btn-soft qa" data-need="list" data-msg="I'd like to tailor a resume and cover letter for a job from the list.">Tailor for a job</button>
+              <button class="btn btn-soft qa" data-need="resume" data-msg="I'd like to apply to a job on LinkedIn using Easy Apply, using the resume that was just generated. Ask me which job from my list, fill in the application, then show me a summary of the exact answers you'll submit and WAIT for me to reply 'yes' here in this chat before you submit. Do NOT rely on a separate approval dialog or any auto-approve mechanism — get my confirmation as a normal chat reply first.">Auto-Apply (Easy Apply)</button>
             </div>
+            <div class="chat-input"><input id="chatText" placeholder="Answer the grill or type a message… (Enter to send)" autocomplete="off"/><button class="btn btn-dark" id="chatSend">Send</button></div>
           </div>
         </div>
       </section>
@@ -332,6 +344,128 @@ document.querySelectorAll('#nav a[data-view]').forEach(a=>{
 const heights=[42,60,32,70,92];const cols=['#d6d9f5','#c3c8f0','#e3e5fa','#9ea6ee','#4f46e5'];
 const c=document.getElementById('chart');
 heights.forEach((h,i)=>{const b=document.createElement('div');b.className='bar';b.style.height=h+'%';b.style.background=cols[i];c.appendChild(b);});
+
+// ===== Backend wiring (ported from old fully-wired UI) =====
+(function(){
+  const CANNED = ["Let's start a grill session so you can learn more about me.","I want to add more information to my profile.","Please generate my ranked list of suitable jobs.","Please generate a general resume and cover letter for me, without tailoring to a specific job.","I'd like to tailor a resume and cover letter for a job from the list.","I'd like to apply to a job on LinkedIn using Easy Apply, using the resume that was just generated. Ask me which job from my list, fill in the application, then show me a summary of the exact answers you'll submit and WAIT for me to reply 'yes' here in this chat before you submit. Do NOT rely on a separate approval dialog or any auto-approve mechanism — get my confirmation as a normal chat reply first."];
+  let lastId=0, listReady=false, resumeReady=false, intakeReady=false;
+  const STAGE_RE=/STAGE:\s*(LIST_READY|LISTREADY|LIST)/i;
+  const MATERIAL_RE=/MATERIAL:\s*(ready|yes|1|true)/i;
+  const chatlog=document.getElementById('chatlog');
+  const chatText=document.getElementById('chatText');
+  const chatSend=document.getElementById('chatSend');
+  function clean(t){ return (t||'').replace(/STAGE:\s*\w+/gi,'').replace(/MATERIAL:\s*\w+/gi,'').trim(); }
+  function addMsg(msg){
+    if(!chatlog) return;
+    const wrap=document.createElement('div');
+    wrap.className='msg '+(msg.role==='you'?'me':'ai');
+    if(msg.file){
+      const a=document.createElement('a');
+      a.className='filechip'; a.target='_blank';
+      a.href='/api/download/'+encodeURIComponent(msg.file);
+      a.textContent='\uD83D\uDCCE '+msg.file;
+      wrap.appendChild(a);
+    } else { wrap.textContent=clean(msg.text); }
+    chatlog.appendChild(wrap); chatlog.scrollTop=chatlog.scrollHeight;
+  }
+  function parseMarkers(text){
+    if(!text) return;
+    if(STAGE_RE.test(text)){ listReady=true; gate(); }
+    if(MATERIAL_RE.test(text)){ resumeReady=true; intakeReady=true; gate(); }
+  }
+  let typingEl=null;
+  function showTyping(){ if(typingEl||!chatlog) return; typingEl=document.createElement('div'); typingEl.className='msg ai typing'; typingEl.textContent='Sai is typing\u2026'; chatlog.appendChild(typingEl); chatlog.scrollTop=chatlog.scrollHeight; }
+  function hideTyping(){ if(typingEl){ typingEl.remove(); typingEl=null; } }
+  async function poll(){
+    try{
+      const res=await fetch('/api/messages?after='+lastId);
+      const data=await res.json();
+      for(const msg of data.messages){
+        if(msg.role==='sai') hideTyping();
+        addMsg(msg); parseMarkers(msg.text);
+        lastId=Math.max(lastId,msg.id);
+      }
+    }catch(e){}
+  }
+  setInterval(poll,1500); poll();
+  async function send(t){
+    t=(t||'').trim(); if(!t) return;
+    addMsg({role:'you',text:t}); showTyping();
+    try{ await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t})}); }
+    catch(e){ hideTyping(); }
+  }
+  if(chatSend) chatSend.onclick=()=>{ send(chatText.value); chatText.value=''; };
+  if(chatText) chatText.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(chatText.value); chatText.value=''; } });
+  // ---- upload ----
+  const fileInput=document.createElement('input');
+  fileInput.type='file'; fileInput.multiple=true; fileInput.style.display='none';
+  document.body.appendChild(fileInput);
+  async function uploadFiles(files){
+    for(const f of files){
+      const fd=new FormData(); fd.append('file',f);
+      try{ const res=await fetch('/api/upload',{method:'POST',body:fd});
+        if(res.ok){ intakeReady=true; if(/resume/i.test(f.name)) resumeReady=true; gate(); poll(); } }catch(e){}
+    }
+  }
+  fileInput.onchange=()=>{ if(fileInput.files.length){ uploadFiles(fileInput.files); fileInput.value=''; } };
+  // ---- view switch ----
+  function showView(v){
+    document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));
+    const na=document.querySelector('#nav a[data-view="'+v+'"]'); if(na) na.classList.add('active');
+    document.querySelectorAll('.view').forEach(s=>s.classList.remove('show'));
+    const el=document.getElementById('view-'+v); if(el) el.classList.add('show');
+  }
+  // ---- generated files ----
+  async function pollFiles(){
+    try{
+      const res=await fetch('/api/files'); const data=await res.json();
+      const files=data.files||[]; window.__files=files;
+      const fl=document.getElementById('filesList');
+      if(fl){
+        fl.innerHTML = files.length
+          ? files.map(n=>'<div class="list-row"><div class="ic">IC_doc</div><div><b>'+n+'</b></div><div style="margin-left:auto"><a class="link" href="/api/download/'+encodeURIComponent(n)+'" target="_blank">Download</a></div></div>').join('')
+          : '<small style="color:var(--muted)">No generated files yet.</small>';
+      }
+      if(files.some(n=>/resume/i.test(n))){ resumeReady=true; gate(); }
+    }catch(e){}
+  }
+  setInterval(pollFiles,3000); pollFiles();
+  // ---- gating ----
+  function gate(){
+    document.querySelectorAll('[data-need]').forEach(b=>{
+      const need=b.getAttribute('data-need'); let ok=true;
+      if(need==='material') ok=intakeReady||resumeReady;
+      else if(need==='list') ok=listReady;
+      else if(need==='resume') ok=resumeReady;
+      b.style.display=ok?'':'none';
+    });
+  }
+  // ---- data-msg quick actions ----
+  document.querySelectorAll('[data-msg]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      if(b.getAttribute('data-marks-list')==='1'){ listReady=true; gate(); }
+      send(b.getAttribute('data-msg')); showView('upload');
+    });
+  });
+  // ---- named design buttons by text ----
+  function findBtns(rx){ return [...document.querySelectorAll('button, .nav a, a')].filter(el=>rx.test((el.textContent||'').trim())); }
+  findBtns(/start new application|prepare grill/i).forEach(b=>b.addEventListener('click',()=>{ send(CANNED[0]); showView('upload'); }));
+  findBtns(/automate profile update/i).forEach(b=>b.addEventListener('click',()=>{ send(CANNED[1]); showView('upload'); }));
+  findBtns(/co-?pilot chat/i).forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); showView('upload'); if(chatText) chatText.focus(); }));
+  findBtns(/select files/i).forEach(b=>b.addEventListener('click',()=>fileInput.click()));
+  findBtns(/connect drive/i).forEach(b=>b.addEventListener('click',()=>alert('Google Drive connection coming soon.')));
+  findBtns(/preview pdf/i).forEach(b=>b.addEventListener('click',()=>{ const f=window.__files||[]; if(f.length) window.open('/api/download/'+encodeURIComponent(f[0]),'_blank'); else alert('No generated files yet.'); }));
+  findBtns(/approve.*submit/i).forEach(b=>b.addEventListener('click',()=>{ send('yes'); showView('upload'); }));
+  findBtns(/^cancel$/i).forEach(b=>b.addEventListener('click',()=>showView('dash')));
+  // ---- drag & drop ----
+  const upView=document.getElementById('view-upload');
+  if(upView){
+    ['dragover','dragenter'].forEach(ev=>upView.addEventListener(ev,e=>e.preventDefault()));
+    upView.addEventListener('drop',e=>{ e.preventDefault(); if(e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
+  }
+  gate();
+})();
+
 </script>
 </body>
 </html>
