@@ -1,4 +1,4 @@
-# sai-tg — Telegram control + AI resume / cover-letter / auto-apply for Sai
+# sai-tg — Telegram control + AI resume / cover-letter / auto-apply for Linkedin
 
 A companion toolkit for the **Sai** AI agent that does two things:
 
