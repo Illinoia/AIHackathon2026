@@ -1,0 +1,26 @@
+# Secrets & local config
+config.json
+*.session
+sai_session.session
+.env
+*.key
+*.pem
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Uploads / runtime data
+uploads/
+*.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
