@@ -29,25 +29,51 @@ steps. After linking you'll have a Sai bot you can DM. Note its @username.
 Go to https://my.telegram.org -> **API development tools** and create an app.
 Copy the **api_id** and **api_hash**.
 
-### 3. Install (Arch Linux, via pip)
-Arch enforces PEP 668, so install into a **virtual environment** with pip rather
-than system-wide. From the project folder:
+## 3. Install
+
+The steps below use a **virtual environment + pip**, which works the same on
+Windows and Linux and keeps dependencies self-contained.
+
+From the project folder:
+
 ```bash
 cd sai-telegram-cli
+```
 
+### Windows (PowerShell)
+
+```powershell
+# create & activate a venv
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# install dependencies
+pip install -r requirements.txt
+```
+
+> If activation is blocked by execution policy, run once:
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+> (Command Prompt users: activate with `.\.venv\Scripts\activate.bat` instead.)
+
+### Linux / macOS (bash)
+
+```bash
 # create & activate a venv
 python -m venv .venv
 source .venv/bin/activate
 
-# install dependencies with pip
+# install dependencies
 pip install -r requirements.txt
 ```
-> Prefer system packages instead? You can use pacman/AUR:
-> `sudo pacman -S python-telethon python-flask` (then skip the venv).
-> But the pip + venv route above is the recommended, self-contained method.
 
-Re-activate the venv (`source .venv/bin/activate`) in any new shell before
-running the commands below.
+
+---
+
+**Re-activate the venv in every new shell** before running the project:
+
+- Windows: `.\.venv\Scripts\Activate.ps1`
+- Linux/macOS: `source .venv/bin/activate`
+
 
 ### 4. Configure
 ```bash
