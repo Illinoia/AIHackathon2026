@@ -418,6 +418,16 @@ bridge = None
 
 @app.route("/")
 def index():
+    # Serve the new "JobFlow AI" UI (static/index.html), wired to the API endpoints.
+    # Resolve relative to this script so it works regardless of the launch CWD,
+    # and fail loudly (with the expected path) instead of a cryptic 404.
+    idx = HERE / "static" / "index.html"
+    if idx.is_file():
+        return send_from_directory(HERE / "static", "index.html")
+    # Fallback: the new UI's static file is missing (e.g. the 'static' folder
+    # wasn't shipped next to web_app.py). Serve the self-contained embedded UI
+    # so the app never 404s on '/'.
+    print(f"[warn] {idx} not found — serving embedded fallback UI")
     return INDEX_HTML
 
 
